@@ -2,529 +2,801 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>羽毛球启动步训练器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Orbitron', 'monospace'],
+                        body: ['"Noto Sans SC"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <style>
+        :root {
+            --bg: #080c14;
+            --card: #111827;
+            --border: #1e293b;
+            --fg: #e2e8f0;
+            --muted: #64748b;
+            --accent: #00e676;
+            --alert: #ff5722;
+            --info: #29b6f6;
+        }
         * { box-sizing: border-box; }
         body {
-            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-            background-color: #121212;
-            color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-            user-select: none;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: 'Noto Sans SC', sans-serif;
+            min-height: 100dvh;
+            overflow-x: hidden;
         }
-        .title { font-size: 22px; color: #888; margin-bottom: 10px; }
-
-        .settings {
-            background-color: #1e1e1e;
-            border-radius: 15px;
-            padding: 20px 25px;
-            margin-bottom: 15px;
-            width: 100%;
-            max-width: 350px;
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background:
+                radial-gradient(ellipse at 15% 30%, rgba(0,230,118,0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 85% 70%, rgba(255,87,34,0.03) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 90%, rgba(41,182,246,0.03) 0%, transparent 40%);
+            pointer-events: none; z-index: 0;
         }
-        .settings-title { font-size: 15px; color: #aaa; margin-bottom: 12px; text-align: center; }
-        .setting-row {
-            display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+        #flashOverlay {
+            position: fixed; inset: 0;
+            pointer-events: none; z-index: 90;
+            opacity: 0;
+            transition: opacity 0.12s ease-out;
         }
-        .setting-row label { font-size: 15px; color: #ccc; }
-        .setting-row input {
-            width: 70px; padding: 8px; font-size: 18px; text-align: center;
-            border: none; border-radius: 8px; background-color: #333; color: #fff;
+        @keyframes num-pop {
+            0% { transform: scale(0.2); opacity: 0; }
+            50% { transform: scale(1.18); }
+            100% { transform: scale(1); opacity: 1; }
         }
-        .setting-row input:focus { outline: 2px solid #2979ff; }
-        .unit { font-size: 13px; color: #888; margin-left: 4px; }
-
-        .display-area {
-            height: 35vh; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
+        .num-pop { animation: num-pop 0.28s ease-out forwards; }
+        @keyframes breathe {
+            0%,100% { opacity: .55; }
+            50% { opacity: 1; }
         }
-        #number-display {
-            font-size: 180px; font-weight: bold; color: #00e676;
-            text-shadow: 0 0 25px rgba(0, 230, 118, 0.5);
-            transition: all 0.1s ease-in-out; line-height: 1;
+        .breathe { animation: breathe 1.6s ease-in-out infinite; }
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            height: 5px; background: var(--border);
+            border-radius: 3px; outline: none; width: 100%;
         }
-        #direction-text { font-size: 30px; color: #888; margin-top: 8px; }
-
-        .pop {
-            transform: scale(1.15);
-            color: #ff3d00 !important;
-            text-shadow: 0 0 40px rgba(255, 61, 0, 0.9) !important;
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px; height: 16px;
+            background: var(--accent); border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 6px rgba(0,230,118,0.4);
         }
-
-        .btn-area { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
-
-        button {
-            margin-top: 15px; padding: 16px 45px; font-size: 24px; font-weight: bold;
-            border: none; border-radius: 50px; color: white; cursor: pointer;
-            transition: all 0.2s;
+        .btn-go {
+            background: var(--accent); color: #000;
+            transition: box-shadow .2s, transform .15s;
         }
-        button:active { transform: scale(0.95); }
-        #ctrl-btn {
-            background-color: #2979ff;
-            box-shadow: 0 4px 15px rgba(41, 121, 255, 0.4);
+        .btn-go:hover { box-shadow: 0 0 24px rgba(0,230,118,0.35); transform: translateY(-1px); }
+        .btn-go:active { transform: translateY(0); }
+        .btn-sec {
+            background: transparent; border: 1px solid var(--border);
+            color: var(--fg); transition: all .2s;
         }
-        #ctrl-btn.stop {
-            background-color: #ff3d00;
-            box-shadow: 0 4px 15px rgba(255, 61, 0, 0.4);
+        .btn-sec:hover { border-color: var(--accent); color: var(--accent); }
+        .settings-panel {
+            max-height: 0; overflow: hidden;
+            transition: max-height .35s ease;
         }
-        #test-btn {
-            background-color: #555;
-            box-shadow: 0 4px 10px rgba(100, 100, 100, 0.3);
-            font-size: 16px;
-            padding: 12px 25px;
+        .settings-panel.open { max-height: 600px; }
+        #clockCanvas {
+            width: min(300px, 75vw);
+            height: min(300px, 75vw);
+            display: block;
         }
-
-        .settings.hidden, .hidden { display: none; }
-        .tips { margin-top: 20px; font-size: 12px; color: #555; text-align: center; max-width: 85%; }
-        .counter { margin-top: 12px; font-size: 16px; color: #666; }
-
-        #status-bar {
-            margin-top: 8px; font-size: 13px; color: #666; text-align: center;
+        .dir-num {
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            font-size: clamp(4rem, 18vw, 7rem);
+            line-height: 1;
+            transition: color .15s;
         }
-        #status-bar.ok { color: #4caf50; }
-        #status-bar.warn { color: #ff9800; }
-        #status-bar.err { color: #f44336; }
-
-        .loading-bar {
-            width: 200px; height: 6px; background: #333; border-radius: 3px;
-            margin-top: 10px; overflow: hidden;
-        }
-        .loading-bar .fill {
-            height: 100%; width: 0%; background: #2979ff; border-radius: 3px;
-            transition: width 0.3s;
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
         }
     </style>
 </head>
-<body>
 
-    <div class="title">🏸 羽毛球启动步训练</div>
+<body class="relative">
+    <div id="flashOverlay"></div>
 
-    <div class="settings" id="settings">
-        <div class="settings-title">⏱️ 间隔时间设置</div>
-        <div class="setting-row">
-            <label>最小间隔</label>
-            <div>
-                <input type="number" id="min-interval" value="3" min="1" max="10" step="0.5">
-                <span class="unit">秒</span>
+    <div class="relative z-10 min-h-dvh flex flex-col items-center px-4 py-5 max-w-md mx-auto select-none">
+
+        <header class="text-center mb-4">
+            <h1 class="font-display text-xl md:text-2xl font-bold tracking-widest" style="color:var(--accent)">SHADOW STEP</h1>
+            <p class="text-xs mt-0.5 tracking-wide" style="color:var(--muted)">羽毛球启动步训练器</p>
+        </header>
+
+        <div class="relative flex items-center justify-center">
+            <canvas id="clockCanvas"></canvas>
+        </div>
+
+        <div class="text-center mt-2 mb-1 flex flex-col items-center" style="min-height:110px">
+            <div id="dirNum" class="dir-num" style="color:var(--alert);opacity:0">--</div>
+            <div id="dirLabel" class="text-sm mt-1 font-medium" style="color:var(--muted);min-height:1.4em"></div>
+            <div id="statusText" class="text-base mt-1 font-bold tracking-wide" style="color:var(--muted)">准备就绪</div>
+        </div>
+
+        <div class="flex gap-3 w-full mb-4">
+            <div class="flex-1 rounded-xl p-2.5 text-center" style="background:rgba(17,24,39,.8);border:1px solid var(--border)">
+                <div class="text-[10px] uppercase tracking-wider" style="color:var(--muted)">次数</div>
+                <div id="statRounds" class="font-display text-xl font-bold mt-0.5">0</div>
+            </div>
+            <div class="flex-1 rounded-xl p-2.5 text-center" style="background:rgba(17,24,39,.8);border:1px solid var(--border)">
+                <div class="text-[10px] uppercase tracking-wider" style="color:var(--muted)">时长</div>
+                <div id="statTime" class="font-display text-xl font-bold mt-0.5">00:00</div>
+            </div>
+            <div class="flex-1 rounded-xl p-2.5 text-center" style="background:rgba(17,24,39,.8);border:1px solid var(--border)">
+                <div class="text-[10px] uppercase tracking-wider" style="color:var(--muted)">上次</div>
+                <div id="statLast" class="font-display text-xl font-bold mt-0.5">--</div>
             </div>
         </div>
-        <div class="setting-row">
-            <label>最大间隔</label>
-            <div>
-                <input type="number" id="max-interval" value="5" min="1" max="15" step="0.5">
-                <span class="unit">秒</span>
+
+        <div class="flex gap-3 w-full mb-3">
+            <button id="btnStart" class="btn-go flex-1 py-3 rounded-xl font-bold text-sm font-display tracking-wider"
+                    onclick="toggleTraining()" aria-label="开始或暂停训练">
+                <i class="fas fa-play mr-2"></i>开始训练
+            </button>
+            <button class="btn-sec px-5 py-3 rounded-xl" onclick="resetTraining()" aria-label="重置训练">
+                <i class="fas fa-redo-alt"></i>
+            </button>
+        </div>
+        <p class="text-[10px] mb-3" style="color:var(--muted)">
+            <kbd class="px-1 py-0.5 rounded text-[10px]" style="background:var(--border)">Space</kbd> 开始/暂停 &nbsp;
+            <kbd class="px-1 py-0.5 rounded text-[10px]" style="background:var(--border)">R</kbd> 重置
+        </p>
+
+        <button class="flex items-center gap-2 text-xs mb-2" style="color:var(--muted)" onclick="toggleSettings()">
+            <i class="fas fa-sliders-h"></i><span>训练设置</span>
+            <i id="setArrow" class="fas fa-chevron-down text-[10px] transition-transform duration-300"></i>
+        </button>
+
+        <div id="settingsPanel" class="settings-panel w-full">
+            <div class="rounded-xl p-4 space-y-4 mb-3" style="background:rgba(17,24,39,.85);border:1px solid var(--border)">
+
+                <div>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="text-xs font-medium">碎步等待时间</label>
+                        <span id="lblWait" class="text-xs font-display" style="color:var(--accent)">2 ~ 5 秒</span>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <span class="text-[10px]" style="color:var(--muted)">短</span>
+                        <input type="range" id="rngWaitMin" min="1" max="6" value="2" step="0.5" oninput="syncSettings()">
+                        <input type="range" id="rngWaitMax" min="2" max="8" value="5" step="0.5" oninput="syncSettings()">
+                        <span class="text-[10px]" style="color:var(--muted)">长</span>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="text-xs font-medium">回位时间</label>
+                        <span id="lblRecover" class="text-xs font-display" style="color:var(--info)">3 ~ 4 秒</span>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <span class="text-[10px]" style="color:var(--muted)">短</span>
+                        <input type="range" id="rngRecMin" min="2" max="5" value="3" step="0.5" oninput="syncSettings()">
+                        <input type="range" id="rngRecMax" min="2" max="7" value="4" step="0.5" oninput="syncSettings()">
+                        <span class="text-[10px]" style="color:var(--muted)">长</span>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="text-xs font-medium">训练轮数</label>
+                        <span id="lblRounds" class="text-xs font-display" style="color:var(--alert)">无限</span>
+                    </div>
+                    <input type="range" id="rngRounds" min="0" max="50" value="0" step="1" oninput="syncSettings()">
+                    <div class="flex justify-between text-[10px] mt-0.5" style="color:var(--muted)"><span>0 = 无限</span><span>50</span></div>
+                </div>
+
+                <!-- 铃声开关 -->
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-medium">提示铃声</label>
+                    <button id="btnSound" class="w-11 h-6 rounded-full relative transition-colors duration-200"
+                            style="background:var(--accent)" onclick="toggleSound()" aria-label="开关铃声">
+                        <span id="knobSound" class="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200" style="left:calc(100% - 22px)"></span>
+                    </button>
+                </div>
+
+                <!-- 语音播报开关 -->
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-medium">语音播报</label>
+                    <button id="btnSpeech" class="w-11 h-6 rounded-full relative transition-colors duration-200"
+                            style="background:var(--accent)" onclick="toggleSpeech()" aria-label="开关语音播报">
+                        <span id="knobSpeech" class="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200" style="left:calc(100% - 22px)"></span>
+                    </button>
+                </div>
+
+                <div class="flex gap-2">
+                    <button class="btn-sec flex-1 py-2 rounded-lg text-xs" onclick="testBell()">
+                        <i class="fas fa-volume-up mr-1"></i>测试铃声
+                    </button>
+                    <button class="btn-sec flex-1 py-2 rounded-lg text-xs" onclick="testSpeech()">
+                        <i class="fas fa-comment-dots mr-1"></i>测试语音
+                    </button>
+                </div>
+
+                <!-- 语音状态提示 -->
+                <div id="speechStatus" class="text-[10px] text-center" style="color:var(--muted)"></div>
             </div>
         </div>
-    </div>
 
-    <div class="display-area">
-        <div id="number-display">准备</div>
-        <div id="direction-text"></div>
-    </div>
+        <div class="rounded-xl p-3 w-full" style="background:rgba(17,24,39,.7);border:1px solid var(--border)">
+            <div class="text-[10px] uppercase tracking-wider mb-1.5" style="color:var(--muted)">时钟方向对照</div>
+            <div class="grid grid-cols-4 gap-x-3 gap-y-0.5 text-xs text-center">
+                <div><span class="font-display font-bold" style="color:var(--accent)">12</span> 正前</div>
+                <div><span class="font-display font-bold" style="color:var(--accent)">1</span> 右前</div>
+                <div><span class="font-display font-bold" style="color:var(--accent)">3</span> 正右</div>
+                <div><span class="font-display font-bold" style="color:var(--accent)">5</span> 右后</div>
+                <div><span class="font-display font-bold" style="color:var(--accent)">6</span> 正后</div>
+                <div><span class="font-display font-bold" style="color:var(--accent)">7</span> 左后</div>
+                <div><span class="font-display font-bold" style="color:var(--accent)">9</span> 正左</div>
+                <div><span class="font-display font-bold" style="color:var(--accent)">11</span> 左前</div>
+            </div>
+        </div>
 
-    <div class="btn-area">
-        <button id="ctrl-btn">开始训练</button>
-        <button id="test-btn">🔊 测试声音</button>
-    </div>
-
-    <div class="counter" id="counter"></div>
-    <div id="status-bar"></div>
-    <div class="loading-bar" id="loading-bar" style="display:none;">
-        <div class="fill" id="loading-fill"></div>
-    </div>
-
-    <div class="tips">
-        听到语音后，向对应钟表方向跨步并重心下沉。<br>
-        首次使用请先点"测试声音"确认可以听到。
     </div>
 
     <script>
-        // ========== 全局状态 ==========
-        let isRunning = false;
-        let timerId = null;
-        let stepCount = 0;
+    /* ===== 全局状态 ===== */
+    let audioCtx = null;
+    let isTraining = false;
+    let isPaused = false;
+    let state = 'idle';
+    let curDir = null;
+    let rounds = 0;
+    let startTs = null;
+    let timerHandle = null;
+    let phaseHandle = null;
+    let rafId = null;
+    let soundOn = true;
+    let speechOn = true;
+    let wakeLock = null;
 
-        // 音频相关
-        let audioCtx = null;
-        let audioBuffers = {};  // 缓存解码后的音频 {1: AudioBuffer, 2: ...}
-        let audioReady = false;
-        let beepBuffer = null;
+    // 语音合成相关
+    let speechUnlocked = false;     // 是否已在用户手势中解锁
+    let preferredVoice = null;      // 首选中文语音
+    let iosResumeInterval = null;   // iOS resume 定时器
 
-        const display = document.getElementById('number-display');
-        const directionText = document.getElementById('direction-text');
-        const btn = document.getElementById('ctrl-btn');
-        const testBtn = document.getElementById('test-btn');
-        const settingsPanel = document.getElementById('settings');
-        const counterEl = document.getElementById('counter');
-        const statusBar = document.getElementById('status-bar');
-        const loadingBar = document.getElementById('loading-bar');
-        const loadingFill = document.getElementById('loading-fill');
-        const minInput = document.getElementById('min-interval');
-        const maxInput = document.getElementById('max-interval');
+    const DIR_NAME = {
+        1:'右前方',2:'右前',3:'正右方',4:'右后',5:'右后方',
+        6:'正后方',7:'左后方',8:'左后',9:'正左方',10:'左前',11:'左前方',12:'正前方'
+    };
 
-        // ========== AudioContext 初始化 ==========
-        function ensureAudioCtx() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-            return audioCtx;
+    const cfg = { waitMin:2, waitMax:5, recMin:3, recMax:4, totalRounds:0 };
+
+    /* ===== 语音合成 ===== */
+
+    // 检测语音合成可用性
+    function hasSpeech() {
+        return 'speechSynthesis' in window;
+    }
+
+    // 在用户手势中调用，解锁 iOS Safari 的语音限制
+    function unlockSpeech() {
+        if (!hasSpeech()) return;
+        if (speechUnlocked) return;
+
+        try {
+            // iOS Safari 要求首次 speak 必须在用户手势同步调用栈中
+            const u = new SpeechSynthesisUtterance('');
+            u.volume = 0.01;  // 不用0，某些浏览器会忽略
+            u.rate = 10;      // 最快速度
+            speechSynthesis.speak(u);
+            speechUnlocked = true;
+            updateSpeechStatus();
+        } catch(e) {
+            console.warn('语音解锁失败:', e);
         }
+    }
 
-        // ========== 生成 Beep 音频 ==========
-        function createBeepBuffer() {
-            const ctx = ensureAudioCtx();
-            const sr = ctx.sampleRate;
-            const duration = 0.15;
-            const len = sr * duration;
-            const buf = ctx.createBuffer(1, len, sr);
-            const data = buf.getChannelData(0);
-            const freq = 1200;
-            for (let i = 0; i < len; i++) {
-                const t = i / sr;
-                const envelope = Math.exp(-t * 20);
-                data[i] = Math.sin(2 * Math.PI * freq * t) * envelope * 0.7;
-            }
-            return buf;
+    // 预加载并选择中文语音
+    function loadVoices() {
+        if (!hasSpeech()) return;
+        const voices = speechSynthesis.getVoices();
+        if (voices.length === 0) return;
+
+        // 优先级：zh-CN > zh > 任何含 Chinese/中文 的
+        preferredVoice = voices.find(v => v.lang === 'zh-CN')
+                      || voices.find(v => v.lang === 'zh_CN')
+                      || voices.find(v => v.lang.startsWith('zh'))
+                      || voices.find(v => /chinese|中文/i.test(v.name))
+                      || null;
+
+        updateSpeechStatus();
+    }
+
+    // 监听 voices 变化（iOS 延迟加载）
+    if (hasSpeech()) {
+        speechSynthesis.addEventListener('voiceschanged', loadVoices);
+        // 立即尝试一次（Android 通常直接可用）
+        loadVoices();
+    }
+
+    // 更新语音状态提示
+    function updateSpeechStatus() {
+        const el = document.getElementById('speechStatus');
+        if (!hasSpeech()) {
+            el.textContent = '当前浏览器不支持语音播报';
+            el.style.color = 'var(--alert)';
+            return;
         }
-
-        function playBuffer(buffer) {
-            if (!buffer || !audioCtx) return;
-            const source = audioCtx.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioCtx.destination);
-            source.start();
+        const voices = speechSynthesis.getVoices();
+        if (voices.length === 0) {
+            el.textContent = '语音引擎加载中…';
+            el.style.color = 'var(--muted)';
+        } else if (preferredVoice) {
+            el.textContent = '语音就绪：' + preferredVoice.name;
+            el.style.color = 'var(--accent)';
+        } else {
+            el.textContent = '未检测到中文语音，将使用默认语音';
+            el.style.color = '#eab308';
         }
+    }
 
-        function playBeep() {
-            if (!beepBuffer) {
-                beepBuffer = createBeepBuffer();
-            }
-            playBuffer(beepBuffer);
-        }
+    // 播报方向数字
+    function speakDirection(num) {
+        if (!hasSpeech() || !speechOn) return;
 
-        // ========== 用 AudioContext 生成中文数字音频 ==========
-        // 使用简易 PCM 合成：为每个数字生成独特的音调序列
-        // 同时用 <audio> 元素 + 离线 TTS 作为备用
+        try {
+            // 先取消之前的播报，防止堆积
+            speechSynthesis.cancel();
 
-        // 方案：直接在内存中合成可辨识的"摩尔斯风格"数字音
-        // 1点=一声短音, 2点=两声短音 ... 但超过4就不实用
-        // 改为：用不同音高的旋律组合
+            const text = String(num);
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'zh-CN';
+            u.rate = 1.1;       // 稍快，配合训练节奏
+            u.pitch = 1.0;
+            u.volume = 1.0;
 
-        function createNumberAudio(number) {
-            const ctx = ensureAudioCtx();
-            const sr = ctx.sampleRate;
+            if (preferredVoice) u.voice = preferredVoice;
 
-            // 音符定义（Hz）
-            const C5 = 523, D5 = 587, E5 = 659, F5 = 698, G5 = 784, A5 = 880, B5 = 988, C6 = 1047;
-
-            // 每个数字一个简短的音调旋律（2-3个音符，总长约0.5秒）
-            const melodies = {
-                1:  [{f: C5, d: 0.35}],
-                2:  [{f: D5, d: 0.15}, {f: D5, d: 0.15}],
-                3:  [{f: E5, d: 0.12}, {f: E5, d: 0.12}, {f: E5, d: 0.12}],
-                4:  [{f: F5, d: 0.1}, {f: F5, d: 0.1}, {f: F5, d: 0.1}, {f: F5, d: 0.1}],
-                5:  [{f: G5, d: 0.2}, {f: C5, d: 0.2}],
-                6:  [{f: A5, d: 0.15}, {f: E5, d: 0.15}, {f: A5, d: 0.15}],
-                7:  [{f: B5, d: 0.2}, {f: G5, d: 0.2}],
-                8:  [{f: C6, d: 0.12}, {f: G5, d: 0.12}, {f: C6, d: 0.12}, {f: G5, d: 0.12}],
-                9:  [{f: C5, d: 0.15}, {f: E5, d: 0.15}, {f: G5, d: 0.15}],
-                10: [{f: C6, d: 0.3}, {f: C5, d: 0.15}],
-                11: [{f: C6, d: 0.15}, {f: C5, d: 0.15}, {f: C5, d: 0.15}],
-                12: [{f: C6, d: 0.15}, {f: C5, d: 0.1}, {f: D5, d: 0.1}, {f: C5, d: 0.1}],
+            // 确保不被 iOS 暂停
+            u.onstart = () => {
+                if (speechSynthesis.paused) speechSynthesis.resume();
             };
 
-            const melody = melodies[number] || [{f: C5, d: 0.3}];
-            const gap = 0.06;
-
-            let totalDuration = 0;
-            melody.forEach((note, i) => {
-                totalDuration += note.d + (i < melody.length - 1 ? gap : 0);
-            });
-            totalDuration += 0.1; // 尾部留白
-
-            const len = Math.ceil(sr * totalDuration);
-            const buf = ctx.createBuffer(1, len, sr);
-            const data = buf.getChannelData(0);
-
-            let offset = 0;
-            melody.forEach((note) => {
-                const noteSamples = Math.floor(sr * note.d);
-                for (let i = 0; i < noteSamples; i++) {
-                    const t = i / sr;
-                    const env = Math.exp(-t * 5) * (1 - Math.exp(-t * 200));
-                    data[offset + i] = Math.sin(2 * Math.PI * note.f * t) * env * 0.6;
-                }
-                offset += noteSamples + Math.floor(sr * gap);
-            });
-
-            return buf;
+            speechSynthesis.speak(u);
+        } catch(e) {
+            console.warn('语音播报失败:', e);
         }
+    }
 
-        // ========== 预生成所有音频 ==========
-        function preloadAllAudio() {
-            ensureAudioCtx();
-            beepBuffer = createBeepBuffer();
-            for (let i = 1; i <= 12; i++) {
-                audioBuffers[i] = createNumberAudio(i);
+    // iOS 修复：speechSynthesis 会在约15秒不活动后自动暂停
+    // 定期调用 resume 保持活跃
+    function startIosFix() {
+        if (!hasSpeech()) return;
+        stopIosFix();
+        iosResumeInterval = setInterval(() => {
+            if (isTraining && !isPaused && speechSynthesis.speaking) {
+                speechSynthesis.resume();
             }
-            audioReady = true;
+        }, 3000);
+    }
+
+    function stopIosFix() {
+        if (iosResumeInterval) {
+            clearInterval(iosResumeInterval);
+            iosResumeInterval = null;
         }
+    }
 
-        // ========== 真正的语音播报（使用 Audio 元素 + 在线 TTS） ==========
-        // 使用多个免费 TTS 源作为备选
-        let ttsAudioElements = {};
-        let ttsReady = false;
-        let ttsMethod = 'none'; // 'online', 'synth', 'tone'
-
-        // 在线TTS URL生成器
-        function getTTSUrl(text) {
-            // 使用有道TTS（免费，无需API key，支持中文）
-            return `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=1`;
+    // 测试语音按钮
+    function testSpeech() {
+        if (!hasSpeech()) {
+            alert('当前浏览器不支持语音播报');
+            return;
         }
+        // 在用户手势中解锁
+        speechUnlocked = false; // 重置以重新解锁
+        unlockSpeech();
 
-        // 预加载在线TTS音频
-        async function preloadOnlineTTS() {
-            const texts = [];
-            for (let i = 1; i <= 12; i++) {
-                texts.push({ num: i, text: `${i}点` });
-            }
-
-            let loaded = 0;
-            let failed = 0;
-
-            loadingBar.style.display = 'block';
-            loadingFill.style.width = '0%';
-            statusBar.className = '';
-            statusBar.innerText = '正在加载语音资源...';
-
-            const promises = texts.map(({ num, text }) => {
-                return new Promise((resolve) => {
-                    const audio = new Audio();
-                    audio.preload = 'auto';
-                    audio.crossOrigin = 'anonymous';
-
-                    const timeout = setTimeout(() => {
-                        failed++;
-                        loaded++;
-                        loadingFill.style.width = `${(loaded / 12) * 100}%`;
-                        resolve(false);
-                    }, 5000);
-
-                    audio.addEventListener('canplaythrough', () => {
-                        clearTimeout(timeout);
-                        ttsAudioElements[num] = audio;
-                        loaded++;
-                        loadingFill.style.width = `${(loaded / 12) * 100}%`;
-                        resolve(true);
-                    }, { once: true });
-
-                    audio.addEventListener('error', () => {
-                        clearTimeout(timeout);
-                        failed++;
-                        loaded++;
-                        loadingFill.style.width = `${(loaded / 12) * 100}%`;
-                        resolve(false);
-                    }, { once: true });
-
-                    audio.src = getTTSUrl(text);
-                    audio.load();
-                });
-            });
-
-            await Promise.all(promises);
-
-            loadingFill.style.width = '100%';
-
-            if (failed === 0) {
-                ttsReady = true;
-                ttsMethod = 'online';
-                statusBar.className = 'ok';
-                statusBar.innerText = '✅ 语音加载完成（12/12）';
-            } else if (failed < 12) {
-                ttsReady = true;
-                ttsMethod = 'online';
-                statusBar.className = 'warn';
-                statusBar.innerText = `⚠️ 部分语音加载成功（${12 - failed}/12），其余用音效替代`;
-            } else {
-                ttsReady = false;
-                ttsMethod = 'tone';
-                statusBar.className = 'warn';
-                statusBar.innerText = '⚠️ 在线语音不可用，使用音效模式';
-            }
-
-            setTimeout(() => {
-                loadingBar.style.display = 'none';
-            }, 1000);
-        }
-
-        // 播放数字声音
-        function playNumber(number) {
-            // 优先：在线TTS
-            if (ttsReady && ttsAudioElements[number]) {
-                try {
-                    const audio = ttsAudioElements[number];
-                    audio.currentTime = 0;
-                    audio.play().catch(() => {
-                        // 播放失败，用合成音
-                        playBuffer(audioBuffers[number]);
-                    });
-                    return;
-                } catch (e) {
-                    // fall through
-                }
-            }
-
-            // 备选：合成音调
-            if (audioBuffers[number]) {
-                playBuffer(audioBuffers[number]);
-            }
-        }
-
-        // ========== 间隔时间 ==========
-        function getInterval() {
-            let min = parseFloat(minInput.value) || 3;
-            let max = parseFloat(maxInput.value) || 5;
-            if (min > max) [min, max] = [max, min];
-            min = Math.max(1, Math.min(min, 15));
-            max = Math.max(1, Math.min(max, 15));
-            return { min: min * 1000, max: max * 1000 };
-        }
-
-        // ========== 核心循环 ==========
-        function triggerStep() {
-            if (!isRunning) return;
-
-            // 随机方向
-            const dir = Math.floor(Math.random() * 12) + 1;
-            display.innerText = dir;
-            directionText.innerText = `${dir}点方向`;
-
-            // 播放 beep
-            playBeep();
-
-            // 延迟一点播报数字，让 beep 先响
-            setTimeout(() => {
-                if (isRunning) playNumber(dir);
-            }, 200);
-
-            // 计数
-            stepCount++;
-            counterEl.innerText = `已完成: ${stepCount} 次`;
-
-            // 视觉效果
-            display.classList.add('pop');
-            setTimeout(() => display.classList.remove('pop'), 250);
-
-            // 下一次
-            const { min, max } = getInterval();
-            const delay = Math.floor(Math.random() * (max - min)) + min;
-            timerId = setTimeout(triggerStep, delay);
-        }
-
-        // ========== 测试按钮 ==========
-        testBtn.addEventListener('click', () => {
-            ensureAudioCtx();
-            preloadAllAudio();
-
-            playBeep();
+        // 延迟一下让解锁生效
+        setTimeout(() => {
+            speechSynthesis.cancel();
             const testNum = Math.floor(Math.random() * 12) + 1;
-            display.innerText = testNum;
-            directionText.innerText = `${testNum}点方向（测试）`;
+            const u = new SpeechSynthesisUtterance(String(testNum));
+            u.lang = 'zh-CN';
+            u.rate = 1.1;
+            u.volume = 1.0;
+            if (preferredVoice) u.voice = preferredVoice;
+            speechSynthesis.speak(u);
+        }, 100);
+    }
 
-            display.classList.add('pop');
-            setTimeout(() => display.classList.remove('pop'), 250);
+    /* ===== Canvas ===== */
+    const cvs = document.getElementById('clockCanvas');
+    const ctx = cvs.getContext('2d');
+    let cSize, cCenter, cRadius;
 
-            setTimeout(() => {
-                playNumber(testNum);
-            }, 200);
+    function setupCanvas() {
+        const rect = cvs.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        cvs.width = rect.width * dpr;
+        cvs.height = rect.height * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        cSize = rect.width;
+        cCenter = cSize / 2;
+        cRadius = cSize / 2 - 12;
+    }
+    window.addEventListener('resize', () => { setupCanvas(); drawClock(); });
+    setupCanvas();
 
-            setTimeout(() => {
-                if (!isRunning) {
-                    display.innerText = '准备';
-                    directionText.innerText = '';
-                }
-            }, 2000);
+    function dirAngle(n) { return (n * 30 - 90) * Math.PI / 180; }
+
+    let ptrLen = 0, pulseT = 0;
+
+    function drawClock() {
+        const w = cSize, cx = cCenter, r = cRadius;
+        ctx.clearRect(0, 0, w, w);
+
+        // 表盘
+        const bg = ctx.createRadialGradient(cx, cx, 0, cx, cx, r);
+        bg.addColorStop(0, '#172033');
+        bg.addColorStop(1, '#0d1420');
+        ctx.beginPath(); ctx.arc(cx, cx, r, 0, Math.PI*2);
+        ctx.fillStyle = bg; ctx.fill();
+
+        // 外环
+        ctx.beginPath(); ctx.arc(cx, cx, r, 0, Math.PI*2);
+        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2; ctx.stroke();
+
+        // 碎步脉冲环
+        if (state === 'ready') {
+            pulseT += 0.07;
+            const pa = 0.12 + 0.1 * Math.sin(pulseT);
+            const pr = r + 4 + 4 * Math.sin(pulseT);
+            ctx.beginPath(); ctx.arc(cx, cx, pr, 0, Math.PI*2);
+            ctx.strokeStyle = `rgba(0,230,118,${pa.toFixed(3)})`;
+            ctx.lineWidth = 3; ctx.stroke();
+        }
+
+        // 方向扇形高亮
+        if (curDir && (state === 'go' || state === 'recover')) {
+            const a = dirAngle(curDir);
+            const spread = 18 * Math.PI / 180;
+            const sg = ctx.createRadialGradient(cx, cx, 0, cx, cx, r);
+            const alpha = state === 'go' ? 0.22 : 0.10;
+            sg.addColorStop(0, `rgba(255,87,34,${alpha.toFixed(2)})`);
+            sg.addColorStop(0.6, `rgba(255,87,34,${(alpha*0.4).toFixed(2)})`);
+            sg.addColorStop(1, 'rgba(255,87,34,0)');
+            ctx.beginPath(); ctx.moveTo(cx, cx);
+            ctx.arc(cx, cx, r, a - spread, a + spread);
+            ctx.closePath(); ctx.fillStyle = sg; ctx.fill();
+        }
+
+        // 刻度
+        for (let i = 0; i < 60; i++) {
+            const a = (i * 6 - 90) * Math.PI / 180;
+            const isH = (i % 5 === 0);
+            const ir = r - (isH ? 22 : 10), or = r - 4;
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(a)*ir, cx + Math.sin(a)*ir);
+            ctx.lineTo(cx + Math.cos(a)*or, cx + Math.sin(a)*or);
+            ctx.strokeStyle = isH ? '#2a3a4a' : '#1a2536';
+            ctx.lineWidth = isH ? 2 : 1;
+            ctx.stroke();
+        }
+
+        // 数字
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        for (let i = 1; i <= 12; i++) {
+            const a = dirAngle(i);
+            const isHi = (i === curDir && (state === 'go' || state === 'recover'));
+            const nr = r - 36;
+            ctx.font = isHi ? 'bold 20px Orbitron' : '12px Orbitron';
+            ctx.fillStyle = isHi ? '#ff5722' : '#4a5568';
+            if (isHi) { ctx.shadowColor = '#ff5722'; ctx.shadowBlur = 12; }
+            ctx.fillText(String(i), cx + Math.cos(a)*nr, cx + Math.sin(a)*nr);
+            ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+        }
+
+        // 指针
+        if (curDir && (state === 'go' || state === 'recover')) {
+            const a = dirAngle(curDir);
+            const len = (r - 55) * Math.min(ptrLen, 1);
+            const ex = cx + Math.cos(a)*len, ey = cx + Math.sin(a)*len;
+            ctx.beginPath(); ctx.moveTo(cx, cx); ctx.lineTo(ex, ey);
+            ctx.strokeStyle = '#ff5722'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+            ctx.shadowColor = '#ff5722'; ctx.shadowBlur = 10;
+            ctx.stroke();
+            ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.lineCap = 'butt';
+            ctx.beginPath(); ctx.arc(ex, ey, 5, 0, Math.PI*2);
+            ctx.fillStyle = '#ff5722'; ctx.shadowColor = '#ff5722'; ctx.shadowBlur = 14;
+            ctx.fill(); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+        }
+
+        // 中心点
+        const cc = state === 'go' ? '#ff5722' : state === 'ready' ? '#00e676' : state === 'recover' ? '#29b6f6' : '#4a5568';
+        ctx.beginPath(); ctx.arc(cx, cx, 6, 0, Math.PI*2);
+        ctx.fillStyle = cc; ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, cx, 10, 0, Math.PI*2);
+        ctx.strokeStyle = cc.replace(')', ',0.35)').replace('rgb', 'rgba');
+        ctx.lineWidth = 1.5; ctx.stroke();
+
+        if (state === 'go' || state === 'recover') ptrLen = Math.min(ptrLen + 0.1, 1);
+    }
+
+    /* ===== 动画循环 ===== */
+    let animRunning = false;
+    function startAnim() { if (!animRunning) { animRunning = true; animLoop(); } }
+    function stopAnim() { animRunning = false; if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
+    function animLoop() { if (!animRunning) return; drawClock(); rafId = requestAnimationFrame(animLoop); }
+
+    /* ===== 音频 ===== */
+    function getAC() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return audioCtx;
+    }
+
+    function playBell() {
+        if (!soundOn) return;
+        const ac = getAC(), now = ac.currentTime;
+        [880, 1100, 880].forEach((freq, i) => {
+            const t = now + i * 0.13;
+            const osc = ac.createOscillator();
+            osc.type = 'square'; osc.frequency.value = freq;
+            const g = ac.createGain();
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(0.13, t + 0.008);
+            g.gain.setValueAtTime(0.13, t + 0.065);
+            g.gain.linearRampToValueAtTime(0, t + 0.09);
+            osc.connect(g).connect(ac.destination);
+            osc.start(t); osc.stop(t + 0.1);
         });
+    }
 
-        // ========== 开始/停止按钮 ==========
-        btn.addEventListener('click', async () => {
-            ensureAudioCtx();
-            preloadAllAudio();
+    function testBell() {
+        getAC();
+        playBell();
+        if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+    }
 
-            if (isRunning) {
-                // ---- 停止 ----
-                isRunning = false;
-                clearTimeout(timerId);
+    /* ===== 屏幕闪光 ===== */
+    function flashScreen() {
+        const el = document.getElementById('flashOverlay');
+        el.style.backgroundColor = 'rgba(255,87,34,0.1)';
+        el.style.opacity = '1';
+        setTimeout(() => { el.style.opacity = '0'; }, 120);
+    }
 
-                btn.innerText = '开始训练';
-                btn.classList.remove('stop');
-                display.innerText = '准备';
-                display.style.fontSize = '180px';
-                directionText.innerText = '';
-                settingsPanel.classList.remove('hidden');
-                testBtn.classList.remove('hidden');
+    /* ===== 工具 ===== */
+    function rand(a, b) { return a + Math.random() * (b - a); }
 
-                if (stepCount > 0) {
-                    counterEl.innerText = `本次训练: ${stepCount} 次`;
-                }
-            } else {
-                // ---- 开始 ----
-                btn.disabled = true;
-                testBtn.classList.add('hidden');
+    /* ===== 状态机 ===== */
+    function enterReady() {
+        if (!isTraining || isPaused) return;
+        state = 'ready';
+        curDir = null; ptrLen = 0; pulseT = 0;
 
-                // 加载在线语音（如果还没加载过）
-                if (!ttsReady && ttsMethod !== 'tone') {
-                    await preloadOnlineTTS();
-                }
+        const d = document.getElementById('dirNum');
+        d.style.opacity = '0'; d.textContent = '--';
+        document.getElementById('dirLabel').textContent = '';
+        document.getElementById('statusText').textContent = '碎步准备...';
+        document.getElementById('statusText').style.color = 'var(--accent)';
+        document.getElementById('statusText').className = 'text-base mt-1 font-bold tracking-wide breathe';
 
-                btn.disabled = false;
-                isRunning = true;
-                stepCount = 0;
+        startAnim();
+        phaseHandle = setTimeout(enterGo, rand(cfg.waitMin, cfg.waitMax) * 1000);
+    }
 
-                btn.innerText = '停止训练';
-                btn.classList.add('stop');
-                settingsPanel.classList.add('hidden');
-                counterEl.innerText = '';
+    function enterGo() {
+        if (!isTraining || isPaused) return;
+        state = 'go';
+        curDir = Math.floor(Math.random() * 12) + 1;
+        rounds++; ptrLen = 0;
 
-                // 倒计时
-                display.style.fontSize = '100px';
-                let cd = 3;
-                display.innerText = cd;
-                directionText.innerText = '准备就位...';
+        // 铃声 + 震动 + 闪光
+        playBell();
+        if (navigator.vibrate) navigator.vibrate([60, 30, 60]);
+        flashScreen();
 
-                const cdTimer = setInterval(() => {
-                    cd--;
-                    if (cd > 0) {
-                        display.innerText = cd;
-                        playBeep();
-                    } else {
-                        clearInterval(cdTimer);
-                        if (isRunning) {
-                            display.style.fontSize = '180px';
-                            directionText.innerText = '';
-                            triggerStep();
-                        }
-                    }
-                }, 1000);
-            }
-        });
+        // 语音播报（延迟一点，先让铃声响起）
+        setTimeout(() => speakDirection(curDir), 280);
 
-        // 防止训练中误触输入框
-        [minInput, maxInput].forEach(input => {
-            input.addEventListener('focus', () => {
-                if (isRunning) input.blur();
-            });
-        });
+        // UI 更新
+        const d = document.getElementById('dirNum');
+        d.textContent = curDir;
+        d.style.color = 'var(--alert)';
+        d.style.opacity = '1';
+        d.classList.remove('num-pop');
+        void d.offsetWidth;
+        d.classList.add('num-pop');
+
+        document.getElementById('dirLabel').textContent = DIR_NAME[curDir];
+        document.getElementById('dirLabel').style.color = 'var(--alert)';
+        document.getElementById('statusText').textContent = '启动！';
+        document.getElementById('statusText').style.color = 'var(--alert)';
+        document.getElementById('statusText').className = 'text-base mt-1 font-bold tracking-wide';
+        document.getElementById('statRounds').textContent = rounds;
+        document.getElementById('statLast').textContent = curDir;
+
+        // 完成判定
+        if (cfg.totalRounds > 0 && rounds >= cfg.totalRounds) {
+            phaseHandle = setTimeout(() => {
+                stopTraining();
+                document.getElementById('statusText').textContent = '训练完成！';
+                document.getElementById('statusText').style.color = 'var(--accent)';
+            }, 1500);
+            return;
+        }
+
+        phaseHandle = setTimeout(enterRecover, 1500);
+    }
+
+    function enterRecover() {
+        if (!isTraining || isPaused) return;
+        state = 'recover';
+
+        document.getElementById('statusText').textContent = '回位...';
+        document.getElementById('statusText').style.color = 'var(--info)';
+        document.getElementById('statusText').className = 'text-base mt-1 font-bold tracking-wide breathe';
+        document.getElementById('dirLabel').style.color = 'var(--info)';
+
+        phaseHandle = setTimeout(enterReady, rand(cfg.recMin, cfg.recMax) * 1000);
+    }
+
+    /* ===== 训练控制 ===== */
+    function toggleTraining() {
+        if (!isTraining) startTraining();
+        else if (isPaused) resumeTraining();
+        else pauseTraining();
+    }
+
+    function startTraining() {
+        isTraining = true; isPaused = false;
+        rounds = 0; startTs = Date.now();
+
+        // 在用户手势中解锁音频和语音
+        getAC();
+        unlockSpeech();
+        startIosFix();
+        requestWakeLock();
+
+        document.getElementById('btnStart').innerHTML = '<i class="fas fa-pause mr-2"></i>暂停';
+        document.getElementById('statRounds').textContent = '0';
+        timerHandle = setInterval(updateTimer, 500);
+
+        enterReady();
+    }
+
+    function pauseTraining() {
+        isPaused = true;
+        clearTimeout(phaseHandle);
+        // 暂停时停止语音
+        if (hasSpeech()) speechSynthesis.cancel();
+
+        document.getElementById('btnStart').innerHTML = '<i class="fas fa-play mr-2"></i>继续';
+        document.getElementById('statusText').textContent = '已暂停';
+        document.getElementById('statusText').style.color = 'var(--muted)';
+        document.getElementById('statusText').className = 'text-base mt-1 font-bold tracking-wide';
+    }
+
+    function resumeTraining() {
+        isPaused = false;
+        // 恢复时重新解锁语音（iOS 休眠后可能需要）
+        unlockSpeech();
+
+        document.getElementById('btnStart').innerHTML = '<i class="fas fa-pause mr-2"></i>暂停';
+
+        if (state === 'ready') enterReady();
+        else if (state === 'go') {
+            document.getElementById('statusText').textContent = '启动！';
+            document.getElementById('statusText').style.color = 'var(--alert)';
+            phaseHandle = setTimeout(enterRecover, 1200);
+            startAnim();
+        } else if (state === 'recover') {
+            enterRecover();
+        }
+    }
+
+    function stopTraining() {
+        isTraining = false; isPaused = false;
+        state = 'idle'; curDir = null;
+        clearTimeout(phaseHandle);
+        clearInterval(timerHandle);
+        stopAnim();
+        stopIosFix();
+        releaseWakeLock();
+        if (hasSpeech()) speechSynthesis.cancel();
+
+        document.getElementById('btnStart').innerHTML = '<i class="fas fa-play mr-2"></i>开始训练';
+        ptrLen = 0; drawClock();
+    }
+
+    function resetTraining() {
+        stopTraining();
+        rounds = 0; startTs = null;
+        document.getElementById('statRounds').textContent = '0';
+        document.getElementById('statTime').textContent = '00:00';
+        document.getElementById('statLast').textContent = '--';
+        document.getElementById('dirNum').style.opacity = '0';
+        document.getElementById('dirNum').textContent = '--';
+        document.getElementById('dirLabel').textContent = '';
+        document.getElementById('statusText').textContent = '准备就绪';
+        document.getElementById('statusText').style.color = 'var(--muted)';
+        document.getElementById('statusText').className = 'text-base mt-1 font-bold tracking-wide';
+        drawClock();
+    }
+
+    /* ===== 计时 ===== */
+    function updateTimer() {
+        if (!startTs) return;
+        const s = Math.floor((Date.now() - startTs) / 1000);
+        document.getElementById('statTime').textContent =
+            String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+    }
+
+    /* ===== 设置 ===== */
+    function syncSettings() {
+        const wm = parseFloat(document.getElementById('rngWaitMin').value);
+        const wx = parseFloat(document.getElementById('rngWaitMax').value);
+        const rm = parseFloat(document.getElementById('rngRecMin').value);
+        const rx = parseFloat(document.getElementById('rngRecMax').value);
+        const t = parseInt(document.getElementById('rngRounds').value);
+        cfg.waitMin = Math.min(wm, wx); cfg.waitMax = Math.max(wm, wx);
+        cfg.recMin = Math.min(rm, rx); cfg.recMax = Math.max(rm, rx);
+        cfg.totalRounds = t;
+        document.getElementById('lblWait').textContent = `${cfg.waitMin} ~ ${cfg.waitMax} 秒`;
+        document.getElementById('lblRecover').textContent = `${cfg.recMin} ~ ${cfg.recMax} 秒`;
+        document.getElementById('lblRounds').textContent = t === 0 ? '无限' : `${t} 轮`;
+    }
+
+    function toggleSettings() {
+        const p = document.getElementById('settingsPanel');
+        p.classList.toggle('open');
+        document.getElementById('setArrow').style.transform = p.classList.contains('open') ? 'rotate(180deg)' : '';
+    }
+
+    function toggleSound() {
+        soundOn = !soundOn;
+        document.getElementById('btnSound').style.background = soundOn ? 'var(--accent)' : 'var(--border)';
+        document.getElementById('knobSound').style.left = soundOn ? 'calc(100% - 22px)' : '2px';
+    }
+
+    function toggleSpeech() {
+        speechOn = !speechOn;
+        document.getElementById('btnSpeech').style.background = speechOn ? 'var(--accent)' : 'var(--border)';
+        document.getElementById('knobSpeech').style.left = speechOn ? 'calc(100% - 22px)' : '2px';
+        if (!speechOn && hasSpeech()) speechSynthesis.cancel();
+    }
+
+    /* ===== Wake Lock ===== */
+    async function requestWakeLock() {
+        try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
+    }
+    async function releaseWakeLock() {
+        if (wakeLock) { await wakeLock.release(); wakeLock = null; }
+    }
+
+    /* ===== 键盘 ===== */
+    document.addEventListener('keydown', e => {
+        if (e.code === 'Space') { e.preventDefault(); toggleTraining(); }
+        else if (e.code === 'KeyR') { e.preventDefault(); resetTraining(); }
+    });
+
+    /* ===== 初始化 ===== */
+    drawClock();
+    updateSpeechStatus();
     </script>
 </body>
 </html>
