@@ -9,209 +9,150 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 
 <style>
-:root {
-    --bg:#080c14;
-    --card:#111827;
-    --border:#1e293b;
-    --fg:#e2e8f0;
-    --muted:#64748b;
-    --accent:#00e676;
-    --alert:#ff5722;
-    --info:#29b6f6;
-}
-
 body{
     margin:0;
-    background:var(--bg);
-    color:var(--fg);
-    font-family:sans-serif;
-    overflow-x:hidden;
+    background:#0b1220;
+    color:#fff;
+    font-family:Arial;
+    text-align:center;
 }
-
-.btn-go{background:var(--accent);color:#000;font-weight:bold}
-.btn-sec{border:1px solid var(--border);background:transparent;color:var(--fg)}
-
-#clockCanvas{width:280px;height:280px}
-.dir-num{font-size:70px;font-weight:900}
+button{
+    padding:10px 18px;
+    margin:10px;
+    border-radius:8px;
+}
+#num{
+    font-size:80px;
+    font-weight:700;
+    margin-top:20px;
+}
 </style>
 </head>
 
 <body>
 
-<div style="text-align:center;padding:10px">
+<h2>羽毛球启动步训练</h2>
 
-<h2 style="color:var(--accent)">SHADOW STEP</h2>
-<p style="color:var(--muted)">羽毛球启动步训练器</p>
+<div id="num">--</div>
+<div id="status">准备</div>
 
-<canvas id="clockCanvas"></canvas>
-
-<div>
-    <div id="dirNum" class="dir-num">--</div>
-    <div id="status">准备就绪</div>
-</div>
-
-<div style="margin-top:10px">
-<button class="btn-go" onclick="toggleTraining()" id="btn">开始训练</button>
-<button class="btn-sec" onclick="resetTraining()">重置</button>
-</div>
-
-</div>
+<button onclick="start()">开始</button>
+<button onclick="stop()">停止</button>
 
 <script>
 
-/* ======================
-   状态
-====================== */
-let isTraining=false;
-let isPaused=false;
-let state="idle";
-let curDir=null;
-let rounds=0;
-let timer=null;
-let phaseTimer=null;
+/* =========================
+   ⭐ 关键修复：BASE路径自动识别
+========================= */
+const BASE = (() => {
+    const path = window.location.pathname;
+    if (path.includes("bmt-ftwkstaup")) {
+        return "/bmt-ftwkstaup/";
+    }
+    return "/";
+})();
 
-/* ======================
-   音频系统（核心）
-====================== */
+/* =========================
+   音频系统
+========================= */
 const audioMap = {};
-let audioUnlocked=false;
 
 function loadAudio(){
     for(let i=1;i<=12;i++){
-        audioMap[i]=new Audio(`audio/${i}.mp3`);
+        audioMap[i] = new Audio(`${BASE}audio/${i}.mp3`);
     }
-    audioMap.bell=new Audio("audio/bell.mp3");
-    audioMap.start=new Audio("audio/start.mp3");
-    audioMap.recover=new Audio("audio/recover.mp3");
+
+    audioMap.bell = new Audio(`${BASE}audio/bell.mp3`);
+    audioMap.start = new Audio(`${BASE}audio/start.mp3`);
+    audioMap.recover = new Audio(`${BASE}audio/recover.mp3`);
 }
 
+/* ⭐ iPhone必须解锁 */
+let unlocked = false;
 function unlockAudio(){
-    if(audioUnlocked) return;
-    audioUnlocked=true;
+    if(unlocked) return;
+    unlocked = true;
 
-    const silent=new Audio();
-    silent.play().catch(()=>{});
+    const a = new Audio();
+    a.play().catch(()=>{});
 
     loadAudio();
 }
 
+/* =========================
+   播放函数
+========================= */
 function play(n){
-    const a=audioMap[n];
+    const a = audioMap[n];
     if(!a) return;
-    a.currentTime=0;
+    a.currentTime = 0;
     a.play().catch(()=>{});
 }
 
-function playBell(){
-    if(audioMap.bell){
-        audioMap.bell.currentTime=0;
-        audioMap.bell.play().catch(()=>{});
-    }
-}
-
-/* ======================
-   UI
-====================== */
-const dirName={
-1:"右前",2:"右前",3:"右",4:"右后",
-5:"右后",6:"后",7:"左后",8:"左后",
-9:"左",10:"左前",11:"左前",12:"前"
-};
-
-function show(n){
-    document.getElementById("dirNum").innerText=n;
-}
-
-/* ======================
-   状态机
-====================== */
-function enterReady(){
-    if(!isTraining||isPaused) return;
-    state="ready";
-    document.getElementById("status").innerText="碎步准备";
-
-    phaseTimer=setTimeout(enterGo,random(2000,5000));
-}
-
-function enterGo(){
-    if(!isTraining||isPaused) return;
-
-    state="go";
-    curDir=Math.floor(Math.random()*12)+1;
-    rounds++;
-
-    playBell();
-    if(navigator.vibrate) navigator.vibrate(80);
-
-    show(curDir);
-
-    setTimeout(()=>{
-        play(curDir); // ⭐ 核心播放
-    },50);
-
-    document.getElementById("status").innerText="启动！";
-
-    phaseTimer=setTimeout(enterRecover,1500);
-}
-
-function enterRecover(){
-    if(!isTraining||isPaused) return;
-
-    state="recover";
-    document.getElementById("status").innerText="回位";
-
-    if(audioMap.recover){
-        audioMap.recover.currentTime=0;
-        audioMap.recover.play().catch(()=>{});
-    }
-
-    phaseTimer=setTimeout(enterReady,random(3000,4000));
-}
-
-/* ======================
-   控制
-====================== */
-function toggleTraining(){
-    if(!isTraining) start();
-    else stop();
-}
+/* =========================
+   状态逻辑
+========================= */
+let running = false;
+let timer = null;
+let current = null;
 
 function start(){
-    isTraining=true;
-    isPaused=false;
-
+    running = true;
     unlockAudio();
 
-    document.getElementById("btn").innerText="暂停";
+    document.getElementById("status").innerText = "开始";
 
-    enterReady();
+    loop();
 }
 
 function stop(){
-    isTraining=false;
-    clearTimeout(phaseTimer);
-
-    document.getElementById("btn").innerText="开始训练";
-    document.getElementById("status").innerText="已停止";
+    running = false;
+    clearTimeout(timer);
+    document.getElementById("status").innerText = "停止";
+    document.getElementById("num").innerText = "--";
 }
 
-function resetTraining(){
-    stop();
-    document.getElementById("dirNum").innerText="--";
-    document.getElementById("status").innerText="准备就绪";
+/* =========================
+   主循环
+========================= */
+function loop(){
+    if(!running) return;
+
+    // 准备
+    document.getElementById("status").innerText = "准备";
+    timer = setTimeout(()=>{
+
+        if(!running) return;
+
+        // 出方向
+        current = Math.floor(Math.random()*12)+1;
+
+        document.getElementById("num").innerText = current;
+        document.getElementById("status").innerText = "启动";
+
+        play("bell");
+
+        setTimeout(()=>{
+            play(current);
+        },80);
+
+        // 回位
+        setTimeout(()=>{
+            if(!running) return;
+            document.getElementById("status").innerText = "回位";
+            play("recover");
+        },1500);
+
+        // 下一轮
+        setTimeout(loop, 3500);
+
+    }, 2000 + Math.random()*2000);
 }
 
-/* ======================
-   工具
-====================== */
-function random(a,b){
-    return Math.floor(Math.random()*(b-a)+a);
-}
-
-/* ======================
-   初始化
-====================== */
-document.addEventListener("click",unlockAudio,{once:true});
+/* =========================
+   点击解锁（iOS关键）
+========================= */
+document.addEventListener("click", unlockAudio, {once:true});
 
 </script>
 
