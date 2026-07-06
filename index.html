@@ -33,57 +33,153 @@
             --alert: #ff5722;
             --info: #29b6f6;
         }
-        * { box-sizing: border-box; }
+
         body {
             background: var(--bg);
             color: var(--fg);
             font-family: 'Noto Sans SC', sans-serif;
             min-height: 100dvh;
-            overflow-x: hidden;
         }
-        body::before {
-            content: '';
-            position: fixed; inset: 0;
-            background:
-                radial-gradient(ellipse at 15% 30%, rgba(0,230,118,0.04) 0%, transparent 50%),
-                radial-gradient(ellipse at 85% 70%, rgba(255,87,34,0.03) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 90%, rgba(41,182,246,0.03) 0%, transparent 40%);
-            pointer-events: none; z-index: 0;
+
+        .btn-go { background: var(--accent); color:#000; }
+        .btn-sec { border:1px solid var(--border); }
+        .settings-panel { max-height:0; overflow:hidden; transition:.3s; }
+        .settings-panel.open { max-height:600px; }
+
+        .dir-num {
+            font-family: Orbitron;
+            font-weight: 900;
+            font-size: clamp(4rem, 18vw, 7rem);
         }
+
+        @keyframes num-pop {
+            0% { transform:scale(.2); opacity:0; }
+            100% { transform:scale(1); opacity:1; }
+        }
+        .num-pop { animation:num-pop .28s ease-out; }
     </style>
 </head>
 
 <body>
-<div class="relative z-10 min-h-dvh flex flex-col items-center px-4 py-5 max-w-md mx-auto select-none">
 
-    <header class="text-center mb-4">
-        <h1 class="font-display text-xl font-bold" style="color:var(--accent)">SHADOW STEP</h1>
-        <p class="text-xs" style="color:var(--muted)">羽毛球启动步训练器</p>
-    </header>
+<div class="relative z-10 max-w-md mx-auto px-4 py-5">
+
+    <h1 class="text-center text-xl font-bold" style="color:var(--accent)">SHADOW STEP</h1>
 
     <div class="text-center mt-6">
-        <div id="dirNum" style="font-size:80px;color:var(--alert)">--</div>
+        <div id="dirNum" class="dir-num" style="opacity:0;color:var(--alert)">--</div>
         <div id="statusText">准备就绪</div>
     </div>
 
-    <button onclick="testAudio()">测试音频</button>
+    <div class="flex gap-3 mt-6">
+        <button id="btnStart" class="btn-go flex-1 py-3 rounded-xl font-bold"
+                onclick="toggleTraining()">开始训练</button>
+        <button class="btn-sec px-4 rounded-xl" onclick="resetTraining()">重置</button>
+    </div>
 
 </div>
 
 <script>
-/* ✅ 修复点：统一音频路径（关键） */
-const AUDIO_BASE = "./audio/";
+let audioCtx;
+let isTraining=false;
+let isPaused=false;
+let state='idle';
+let curDir=null;
+let speechOn=true;
+let soundOn=true;
+let speechUnlocked=false;
 
-/* 示例：如果你未来要播放 mp3，用这个 */
-function playAudio(file) {
-    const audio = new Audio(AUDIO_BASE + file);
-    audio.play().catch(e => console.warn("audio play failed:", e));
+/* ===== ⭐关键修复：移动端音频解锁 ===== */
+function unlockAudio(){
+    try{
+        if(!audioCtx){
+            audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+        }
+        if(audioCtx.state === 'suspended'){
+            audioCtx.resume();
+        }
+
+        // 兼容 iOS speech unlock
+        const u = new SpeechSynthesisUtterance('');
+        u.volume = 0.01;
+        speechSynthesis.speak(u);
+        speechSynthesis.cancel();
+
+        speechUnlocked = true;
+    }catch(e){}
 }
 
-/* 示例测试 */
-function testAudio() {
-    playAudio("bell.mp3"); // ← 自动走 ./audio/bell.mp3
+document.addEventListener('touchstart', unlockAudio, {once:true});
+document.addEventListener('click', unlockAudio, {once:true});
+
+/* ===== 音频 ===== */
+function playBell(){
+    if(!soundOn) return;
+    const ac = audioCtx;
+    const now = ac.currentTime;
+
+    [880,1100,880].forEach((f,i)=>{
+        const o = ac.createOscillator();
+        const g = ac.createGain();
+        o.frequency.value=f;
+        o.connect(g); g.connect(ac.destination);
+
+        const t = now + i*0.12;
+        g.gain.setValueAtTime(0,t);
+        g.gain.linearRampToValueAtTime(0.2,t+0.01);
+        g.gain.linearRampToValueAtTime(0,t+0.12);
+
+        o.start(t);
+        o.stop(t+0.15);
+    });
 }
+
+/* ===== 语音（关键修复保留） ===== */
+function speak(n){
+    if(!speechOn) return;
+    try{
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(String(n));
+        u.lang='zh-CN';
+        u.rate=1.1;
+        speechSynthesis.speak(u);
+    }catch(e){}
+}
+
+/* ===== 状态 ===== */
+function enterGo(){
+    state='go';
+    curDir = Math.floor(Math.random()*12)+1;
+
+    document.getElementById('dirNum').textContent=curDir;
+    document.getElementById('dirNum').style.opacity=1;
+    document.getElementById('dirNum').classList.add('num-pop');
+
+    playBell();
+    speak(curDir);
+}
+
+/* ===== 控制 ===== */
+function toggleTraining(){
+    if(!isTraining){
+        isTraining=true;
+        unlockAudio();
+        enterGo();
+    }else{
+        isTraining=false;
+        document.getElementById('dirNum').style.opacity=0;
+        document.getElementById('statusText').innerText='已停止';
+    }
+}
+
+function resetTraining(){
+    isTraining=false;
+    document.getElementById('dirNum').style.opacity=0;
+    document.getElementById('dirNum').textContent='--';
+}
+
+/* 初始触发 */
+unlockAudio();
 </script>
 
 </body>
