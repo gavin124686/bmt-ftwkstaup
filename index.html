@@ -1,802 +1,219 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>羽毛球启动步训练器</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        display: ['Orbitron', 'monospace'],
-                        body: ['"Noto Sans SC"', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        :root {
-            --bg: #080c14;
-            --card: #111827;
-            --border: #1e293b;
-            --fg: #e2e8f0;
-            --muted: #64748b;
-            --accent: #00e676;
-            --alert: #ff5722;
-            --info: #29b6f6;
-        }
-        * { box-sizing: border-box; }
-        body {
-            background: var(--bg);
-            color: var(--fg);
-            font-family: 'Noto Sans SC', sans-serif;
-            min-height: 100dvh;
-            overflow-x: hidden;
-        }
-        body::before {
-            content: '';
-            position: fixed; inset: 0;
-            background:
-                radial-gradient(ellipse at 15% 30%, rgba(0,230,118,0.04) 0%, transparent 50%),
-                radial-gradient(ellipse at 85% 70%, rgba(255,87,34,0.03) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 90%, rgba(41,182,246,0.03) 0%, transparent 40%);
-            pointer-events: none; z-index: 0;
-        }
-        #flashOverlay {
-            position: fixed; inset: 0;
-            pointer-events: none; z-index: 90;
-            opacity: 0;
-            transition: opacity 0.12s ease-out;
-        }
-        @keyframes num-pop {
-            0% { transform: scale(0.2); opacity: 0; }
-            50% { transform: scale(1.18); }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        .num-pop { animation: num-pop 0.28s ease-out forwards; }
-        @keyframes breathe {
-            0%,100% { opacity: .55; }
-            50% { opacity: 1; }
-        }
-        .breathe { animation: breathe 1.6s ease-in-out infinite; }
-        input[type="range"] {
-            -webkit-appearance: none; appearance: none;
-            height: 5px; background: var(--border);
-            border-radius: 3px; outline: none; width: 100%;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 16px; height: 16px;
-            background: var(--accent); border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 6px rgba(0,230,118,0.4);
-        }
-        .btn-go {
-            background: var(--accent); color: #000;
-            transition: box-shadow .2s, transform .15s;
-        }
-        .btn-go:hover { box-shadow: 0 0 24px rgba(0,230,118,0.35); transform: translateY(-1px); }
-        .btn-go:active { transform: translateY(0); }
-        .btn-sec {
-            background: transparent; border: 1px solid var(--border);
-            color: var(--fg); transition: all .2s;
-        }
-        .btn-sec:hover { border-color: var(--accent); color: var(--accent); }
-        .settings-panel {
-            max-height: 0; overflow: hidden;
-            transition: max-height .35s ease;
-        }
-        .settings-panel.open { max-height: 600px; }
-        #clockCanvas {
-            width: min(300px, 75vw);
-            height: min(300px, 75vw);
-            display: block;
-        }
-        .dir-num {
-            font-family: 'Orbitron', monospace;
-            font-weight: 900;
-            font-size: clamp(4rem, 18vw, 7rem);
-            line-height: 1;
-            transition: color .15s;
-        }
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>羽毛球启动步训练器</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+<style>
+:root {
+    --bg:#080c14;
+    --card:#111827;
+    --border:#1e293b;
+    --fg:#e2e8f0;
+    --muted:#64748b;
+    --accent:#00e676;
+    --alert:#ff5722;
+    --info:#29b6f6;
+}
+
+body{
+    margin:0;
+    background:var(--bg);
+    color:var(--fg);
+    font-family:sans-serif;
+    overflow-x:hidden;
+}
+
+.btn-go{background:var(--accent);color:#000;font-weight:bold}
+.btn-sec{border:1px solid var(--border);background:transparent;color:var(--fg)}
+
+#clockCanvas{width:280px;height:280px}
+.dir-num{font-size:70px;font-weight:900}
+</style>
 </head>
 
-<body class="relative">
-    <div id="flashOverlay"></div>
+<body>
 
-    <div class="relative z-10 min-h-dvh flex flex-col items-center px-4 py-5 max-w-md mx-auto select-none">
+<div style="text-align:center;padding:10px">
 
-        <header class="text-center mb-4">
-            <h1 class="font-display text-xl md:text-2xl font-bold tracking-widest" style="color:var(--accent)">SHADOW STEP</h1>
-            <p class="text-xs mt-0.5 tracking-wide" style="color:var(--muted)">羽毛球启动步训练器</p>
-        </header>
+<h2 style="color:var(--accent)">SHADOW STEP</h2>
+<p style="color:var(--muted)">羽毛球启动步训练器</p>
 
-        <div class="relative flex items-center justify-center">
-            <canvas id="clockCanvas"></canvas>
-        </div>
+<canvas id="clockCanvas"></canvas>
 
-        <div class="text-center mt-2 mb-1 flex flex-col items-center" style="min-height:110px">
-            <div id="dirNum" class="dir-num" style="color:var(--alert);opacity:0">--</div>
-            <div id="dirLabel" class="text-sm mt-1 font-medium" style="color:var(--muted);min-height:1.4em"></div>
-            <div id="statusText" class="text-base mt-1 font-bold tracking-wide" style="color:var(--muted)">准备就绪</div>
-        </div>
+<div>
+    <div id="dirNum" class="dir-num">--</div>
+    <div id="status">准备就绪</div>
+</div>
 
-        <div class="flex gap-3 w-full mb-4">
-            <div class="flex-1 rounded-xl p-2.5 text-center" style="background:rgba(17,24,39,.8);border:1px solid var(--border)">
-                <div class="text-[10px] uppercase tracking-wider" style="color:var(--muted)">次数</div>
-                <div id="statRounds" class="font-display text-xl font-bold mt-0.5">0</div>
-            </div>
-            <div class="flex-1 rounded-xl p-2.5 text-center" style="background:rgba(17,24,39,.8);border:1px solid var(--border)">
-                <div class="text-[10px] uppercase tracking-wider" style="color:var(--muted)">时长</div>
-                <div id="statTime" class="font-display text-xl font-bold mt-0.5">00:00</div>
-            </div>
-            <div class="flex-1 rounded-xl p-2.5 text-center" style="background:rgba(17,24,39,.8);border:1px solid var(--border)">
-                <div class="text-[10px] uppercase tracking-wider" style="color:var(--muted)">上次</div>
-                <div id="statLast" class="font-display text-xl font-bold mt-0.5">--</div>
-            </div>
-        </div>
+<div style="margin-top:10px">
+<button class="btn-go" onclick="toggleTraining()" id="btn">开始训练</button>
+<button class="btn-sec" onclick="resetTraining()">重置</button>
+</div>
 
-        <div class="flex gap-3 w-full mb-3">
-            <button id="btnStart" class="btn-go flex-1 py-3 rounded-xl font-bold text-sm font-display tracking-wider"
-                    onclick="toggleTraining()" aria-label="开始或暂停训练">
-                <i class="fas fa-play mr-2"></i>开始训练
-            </button>
-            <button class="btn-sec px-5 py-3 rounded-xl" onclick="resetTraining()" aria-label="重置训练">
-                <i class="fas fa-redo-alt"></i>
-            </button>
-        </div>
-        <p class="text-[10px] mb-3" style="color:var(--muted)">
-            <kbd class="px-1 py-0.5 rounded text-[10px]" style="background:var(--border)">Space</kbd> 开始/暂停 &nbsp;
-            <kbd class="px-1 py-0.5 rounded text-[10px]" style="background:var(--border)">R</kbd> 重置
-        </p>
+</div>
 
-        <button class="flex items-center gap-2 text-xs mb-2" style="color:var(--muted)" onclick="toggleSettings()">
-            <i class="fas fa-sliders-h"></i><span>训练设置</span>
-            <i id="setArrow" class="fas fa-chevron-down text-[10px] transition-transform duration-300"></i>
-        </button>
+<script>
 
-        <div id="settingsPanel" class="settings-panel w-full">
-            <div class="rounded-xl p-4 space-y-4 mb-3" style="background:rgba(17,24,39,.85);border:1px solid var(--border)">
+/* ======================
+   状态
+====================== */
+let isTraining=false;
+let isPaused=false;
+let state="idle";
+let curDir=null;
+let rounds=0;
+let timer=null;
+let phaseTimer=null;
 
-                <div>
-                    <div class="flex justify-between items-center mb-1.5">
-                        <label class="text-xs font-medium">碎步等待时间</label>
-                        <span id="lblWait" class="text-xs font-display" style="color:var(--accent)">2 ~ 5 秒</span>
-                    </div>
-                    <div class="flex gap-2 items-center">
-                        <span class="text-[10px]" style="color:var(--muted)">短</span>
-                        <input type="range" id="rngWaitMin" min="1" max="6" value="2" step="0.5" oninput="syncSettings()">
-                        <input type="range" id="rngWaitMax" min="2" max="8" value="5" step="0.5" oninput="syncSettings()">
-                        <span class="text-[10px]" style="color:var(--muted)">长</span>
-                    </div>
-                </div>
+/* ======================
+   音频系统（核心）
+====================== */
+const audioMap = {};
+let audioUnlocked=false;
 
-                <div>
-                    <div class="flex justify-between items-center mb-1.5">
-                        <label class="text-xs font-medium">回位时间</label>
-                        <span id="lblRecover" class="text-xs font-display" style="color:var(--info)">3 ~ 4 秒</span>
-                    </div>
-                    <div class="flex gap-2 items-center">
-                        <span class="text-[10px]" style="color:var(--muted)">短</span>
-                        <input type="range" id="rngRecMin" min="2" max="5" value="3" step="0.5" oninput="syncSettings()">
-                        <input type="range" id="rngRecMax" min="2" max="7" value="4" step="0.5" oninput="syncSettings()">
-                        <span class="text-[10px]" style="color:var(--muted)">长</span>
-                    </div>
-                </div>
+function loadAudio(){
+    for(let i=1;i<=12;i++){
+        audioMap[i]=new Audio(`audio/${i}.mp3`);
+    }
+    audioMap.bell=new Audio("audio/bell.mp3");
+    audioMap.start=new Audio("audio/start.mp3");
+    audioMap.recover=new Audio("audio/recover.mp3");
+}
 
-                <div>
-                    <div class="flex justify-between items-center mb-1.5">
-                        <label class="text-xs font-medium">训练轮数</label>
-                        <span id="lblRounds" class="text-xs font-display" style="color:var(--alert)">无限</span>
-                    </div>
-                    <input type="range" id="rngRounds" min="0" max="50" value="0" step="1" oninput="syncSettings()">
-                    <div class="flex justify-between text-[10px] mt-0.5" style="color:var(--muted)"><span>0 = 无限</span><span>50</span></div>
-                </div>
+function unlockAudio(){
+    if(audioUnlocked) return;
+    audioUnlocked=true;
 
-                <!-- 铃声开关 -->
-                <div class="flex items-center justify-between">
-                    <label class="text-xs font-medium">提示铃声</label>
-                    <button id="btnSound" class="w-11 h-6 rounded-full relative transition-colors duration-200"
-                            style="background:var(--accent)" onclick="toggleSound()" aria-label="开关铃声">
-                        <span id="knobSound" class="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200" style="left:calc(100% - 22px)"></span>
-                    </button>
-                </div>
+    const silent=new Audio();
+    silent.play().catch(()=>{});
 
-                <!-- 语音播报开关 -->
-                <div class="flex items-center justify-between">
-                    <label class="text-xs font-medium">语音播报</label>
-                    <button id="btnSpeech" class="w-11 h-6 rounded-full relative transition-colors duration-200"
-                            style="background:var(--accent)" onclick="toggleSpeech()" aria-label="开关语音播报">
-                        <span id="knobSpeech" class="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200" style="left:calc(100% - 22px)"></span>
-                    </button>
-                </div>
+    loadAudio();
+}
 
-                <div class="flex gap-2">
-                    <button class="btn-sec flex-1 py-2 rounded-lg text-xs" onclick="testBell()">
-                        <i class="fas fa-volume-up mr-1"></i>测试铃声
-                    </button>
-                    <button class="btn-sec flex-1 py-2 rounded-lg text-xs" onclick="testSpeech()">
-                        <i class="fas fa-comment-dots mr-1"></i>测试语音
-                    </button>
-                </div>
+function play(n){
+    const a=audioMap[n];
+    if(!a) return;
+    a.currentTime=0;
+    a.play().catch(()=>{});
+}
 
-                <!-- 语音状态提示 -->
-                <div id="speechStatus" class="text-[10px] text-center" style="color:var(--muted)"></div>
-            </div>
-        </div>
+function playBell(){
+    if(audioMap.bell){
+        audioMap.bell.currentTime=0;
+        audioMap.bell.play().catch(()=>{});
+    }
+}
 
-        <div class="rounded-xl p-3 w-full" style="background:rgba(17,24,39,.7);border:1px solid var(--border)">
-            <div class="text-[10px] uppercase tracking-wider mb-1.5" style="color:var(--muted)">时钟方向对照</div>
-            <div class="grid grid-cols-4 gap-x-3 gap-y-0.5 text-xs text-center">
-                <div><span class="font-display font-bold" style="color:var(--accent)">12</span> 正前</div>
-                <div><span class="font-display font-bold" style="color:var(--accent)">1</span> 右前</div>
-                <div><span class="font-display font-bold" style="color:var(--accent)">3</span> 正右</div>
-                <div><span class="font-display font-bold" style="color:var(--accent)">5</span> 右后</div>
-                <div><span class="font-display font-bold" style="color:var(--accent)">6</span> 正后</div>
-                <div><span class="font-display font-bold" style="color:var(--accent)">7</span> 左后</div>
-                <div><span class="font-display font-bold" style="color:var(--accent)">9</span> 正左</div>
-                <div><span class="font-display font-bold" style="color:var(--accent)">11</span> 左前</div>
-            </div>
-        </div>
+/* ======================
+   UI
+====================== */
+const dirName={
+1:"右前",2:"右前",3:"右",4:"右后",
+5:"右后",6:"后",7:"左后",8:"左后",
+9:"左",10:"左前",11:"左前",12:"前"
+};
 
-    </div>
+function show(n){
+    document.getElementById("dirNum").innerText=n;
+}
 
-    <script>
-    /* ===== 全局状态 ===== */
-    let audioCtx = null;
-    let isTraining = false;
-    let isPaused = false;
-    let state = 'idle';
-    let curDir = null;
-    let rounds = 0;
-    let startTs = null;
-    let timerHandle = null;
-    let phaseHandle = null;
-    let rafId = null;
-    let soundOn = true;
-    let speechOn = true;
-    let wakeLock = null;
+/* ======================
+   状态机
+====================== */
+function enterReady(){
+    if(!isTraining||isPaused) return;
+    state="ready";
+    document.getElementById("status").innerText="碎步准备";
 
-    // 语音合成相关
-    let speechUnlocked = false;     // 是否已在用户手势中解锁
-    let preferredVoice = null;      // 首选中文语音
-    let iosResumeInterval = null;   // iOS resume 定时器
+    phaseTimer=setTimeout(enterGo,random(2000,5000));
+}
 
-    const DIR_NAME = {
-        1:'右前方',2:'右前',3:'正右方',4:'右后',5:'右后方',
-        6:'正后方',7:'左后方',8:'左后',9:'正左方',10:'左前',11:'左前方',12:'正前方'
-    };
+function enterGo(){
+    if(!isTraining||isPaused) return;
 
-    const cfg = { waitMin:2, waitMax:5, recMin:3, recMax:4, totalRounds:0 };
+    state="go";
+    curDir=Math.floor(Math.random()*12)+1;
+    rounds++;
 
-    /* ===== 语音合成 ===== */
+    playBell();
+    if(navigator.vibrate) navigator.vibrate(80);
 
-    // 检测语音合成可用性
-    function hasSpeech() {
-        return 'speechSynthesis' in window;
+    show(curDir);
+
+    setTimeout(()=>{
+        play(curDir); // ⭐ 核心播放
+    },50);
+
+    document.getElementById("status").innerText="启动！";
+
+    phaseTimer=setTimeout(enterRecover,1500);
+}
+
+function enterRecover(){
+    if(!isTraining||isPaused) return;
+
+    state="recover";
+    document.getElementById("status").innerText="回位";
+
+    if(audioMap.recover){
+        audioMap.recover.currentTime=0;
+        audioMap.recover.play().catch(()=>{});
     }
 
-    // 在用户手势中调用，解锁 iOS Safari 的语音限制
-    function unlockSpeech() {
-        if (!hasSpeech()) return;
-        if (speechUnlocked) return;
+    phaseTimer=setTimeout(enterReady,random(3000,4000));
+}
+
+/* ======================
+   控制
+====================== */
+function toggleTraining(){
+    if(!isTraining) start();
+    else stop();
+}
+
+function start(){
+    isTraining=true;
+    isPaused=false;
+
+    unlockAudio();
+
+    document.getElementById("btn").innerText="暂停";
+
+    enterReady();
+}
+
+function stop(){
+    isTraining=false;
+    clearTimeout(phaseTimer);
+
+    document.getElementById("btn").innerText="开始训练";
+    document.getElementById("status").innerText="已停止";
+}
+
+function resetTraining(){
+    stop();
+    document.getElementById("dirNum").innerText="--";
+    document.getElementById("status").innerText="准备就绪";
+}
+
+/* ======================
+   工具
+====================== */
+function random(a,b){
+    return Math.floor(Math.random()*(b-a)+a);
+}
+
+/* ======================
+   初始化
+====================== */
+document.addEventListener("click",unlockAudio,{once:true});
+
+</script>
 
-        try {
-            // iOS Safari 要求首次 speak 必须在用户手势同步调用栈中
-            const u = new SpeechSynthesisUtterance('');
-            u.volume = 0.01;  // 不用0，某些浏览器会忽略
-            u.rate = 10;      // 最快速度
-            speechSynthesis.speak(u);
-            speechUnlocked = true;
-            updateSpeechStatus();
-        } catch(e) {
-            console.warn('语音解锁失败:', e);
-        }
-    }
-
-    // 预加载并选择中文语音
-    function loadVoices() {
-        if (!hasSpeech()) return;
-        const voices = speechSynthesis.getVoices();
-        if (voices.length === 0) return;
-
-        // 优先级：zh-CN > zh > 任何含 Chinese/中文 的
-        preferredVoice = voices.find(v => v.lang === 'zh-CN')
-                      || voices.find(v => v.lang === 'zh_CN')
-                      || voices.find(v => v.lang.startsWith('zh'))
-                      || voices.find(v => /chinese|中文/i.test(v.name))
-                      || null;
-
-        updateSpeechStatus();
-    }
-
-    // 监听 voices 变化（iOS 延迟加载）
-    if (hasSpeech()) {
-        speechSynthesis.addEventListener('voiceschanged', loadVoices);
-        // 立即尝试一次（Android 通常直接可用）
-        loadVoices();
-    }
-
-    // 更新语音状态提示
-    function updateSpeechStatus() {
-        const el = document.getElementById('speechStatus');
-        if (!hasSpeech()) {
-            el.textContent = '当前浏览器不支持语音播报';
-            el.style.color = 'var(--alert)';
-            return;
-        }
-        const voices = speechSynthesis.getVoices();
-        if (voices.length === 0) {
-            el.textContent = '语音引擎加载中…';
-            el.style.color = 'var(--muted)';
-        } else if (preferredVoice) {
-            el.textContent = '语音就绪：' + preferredVoice.name;
-            el.style.color = 'var(--accent)';
-        } else {
-            el.textContent = '未检测到中文语音，将使用默认语音';
-            el.style.color = '#eab308';
-        }
-    }
-
-    // 播报方向数字
-    function speakDirection(num) {
-        if (!hasSpeech() || !speechOn) return;
-
-        try {
-            // 先取消之前的播报，防止堆积
-            speechSynthesis.cancel();
-
-            const text = String(num);
-            const u = new SpeechSynthesisUtterance(text);
-            u.lang = 'zh-CN';
-            u.rate = 1.1;       // 稍快，配合训练节奏
-            u.pitch = 1.0;
-            u.volume = 1.0;
-
-            if (preferredVoice) u.voice = preferredVoice;
-
-            // 确保不被 iOS 暂停
-            u.onstart = () => {
-                if (speechSynthesis.paused) speechSynthesis.resume();
-            };
-
-            speechSynthesis.speak(u);
-        } catch(e) {
-            console.warn('语音播报失败:', e);
-        }
-    }
-
-    // iOS 修复：speechSynthesis 会在约15秒不活动后自动暂停
-    // 定期调用 resume 保持活跃
-    function startIosFix() {
-        if (!hasSpeech()) return;
-        stopIosFix();
-        iosResumeInterval = setInterval(() => {
-            if (isTraining && !isPaused && speechSynthesis.speaking) {
-                speechSynthesis.resume();
-            }
-        }, 3000);
-    }
-
-    function stopIosFix() {
-        if (iosResumeInterval) {
-            clearInterval(iosResumeInterval);
-            iosResumeInterval = null;
-        }
-    }
-
-    // 测试语音按钮
-    function testSpeech() {
-        if (!hasSpeech()) {
-            alert('当前浏览器不支持语音播报');
-            return;
-        }
-        // 在用户手势中解锁
-        speechUnlocked = false; // 重置以重新解锁
-        unlockSpeech();
-
-        // 延迟一下让解锁生效
-        setTimeout(() => {
-            speechSynthesis.cancel();
-            const testNum = Math.floor(Math.random() * 12) + 1;
-            const u = new SpeechSynthesisUtterance(String(testNum));
-            u.lang = 'zh-CN';
-            u.rate = 1.1;
-            u.volume = 1.0;
-            if (preferredVoice) u.voice = preferredVoice;
-            speechSynthesis.speak(u);
-        }, 100);
-    }
-
-    /* ===== Canvas ===== */
-    const cvs = document.getElementById('clockCanvas');
-    const ctx = cvs.getContext('2d');
-    let cSize, cCenter, cRadius;
-
-    function setupCanvas() {
-        const rect = cvs.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
-        cvs.width = rect.width * dpr;
-        cvs.height = rect.height * dpr;
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        cSize = rect.width;
-        cCenter = cSize / 2;
-        cRadius = cSize / 2 - 12;
-    }
-    window.addEventListener('resize', () => { setupCanvas(); drawClock(); });
-    setupCanvas();
-
-    function dirAngle(n) { return (n * 30 - 90) * Math.PI / 180; }
-
-    let ptrLen = 0, pulseT = 0;
-
-    function drawClock() {
-        const w = cSize, cx = cCenter, r = cRadius;
-        ctx.clearRect(0, 0, w, w);
-
-        // 表盘
-        const bg = ctx.createRadialGradient(cx, cx, 0, cx, cx, r);
-        bg.addColorStop(0, '#172033');
-        bg.addColorStop(1, '#0d1420');
-        ctx.beginPath(); ctx.arc(cx, cx, r, 0, Math.PI*2);
-        ctx.fillStyle = bg; ctx.fill();
-
-        // 外环
-        ctx.beginPath(); ctx.arc(cx, cx, r, 0, Math.PI*2);
-        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2; ctx.stroke();
-
-        // 碎步脉冲环
-        if (state === 'ready') {
-            pulseT += 0.07;
-            const pa = 0.12 + 0.1 * Math.sin(pulseT);
-            const pr = r + 4 + 4 * Math.sin(pulseT);
-            ctx.beginPath(); ctx.arc(cx, cx, pr, 0, Math.PI*2);
-            ctx.strokeStyle = `rgba(0,230,118,${pa.toFixed(3)})`;
-            ctx.lineWidth = 3; ctx.stroke();
-        }
-
-        // 方向扇形高亮
-        if (curDir && (state === 'go' || state === 'recover')) {
-            const a = dirAngle(curDir);
-            const spread = 18 * Math.PI / 180;
-            const sg = ctx.createRadialGradient(cx, cx, 0, cx, cx, r);
-            const alpha = state === 'go' ? 0.22 : 0.10;
-            sg.addColorStop(0, `rgba(255,87,34,${alpha.toFixed(2)})`);
-            sg.addColorStop(0.6, `rgba(255,87,34,${(alpha*0.4).toFixed(2)})`);
-            sg.addColorStop(1, 'rgba(255,87,34,0)');
-            ctx.beginPath(); ctx.moveTo(cx, cx);
-            ctx.arc(cx, cx, r, a - spread, a + spread);
-            ctx.closePath(); ctx.fillStyle = sg; ctx.fill();
-        }
-
-        // 刻度
-        for (let i = 0; i < 60; i++) {
-            const a = (i * 6 - 90) * Math.PI / 180;
-            const isH = (i % 5 === 0);
-            const ir = r - (isH ? 22 : 10), or = r - 4;
-            ctx.beginPath();
-            ctx.moveTo(cx + Math.cos(a)*ir, cx + Math.sin(a)*ir);
-            ctx.lineTo(cx + Math.cos(a)*or, cx + Math.sin(a)*or);
-            ctx.strokeStyle = isH ? '#2a3a4a' : '#1a2536';
-            ctx.lineWidth = isH ? 2 : 1;
-            ctx.stroke();
-        }
-
-        // 数字
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        for (let i = 1; i <= 12; i++) {
-            const a = dirAngle(i);
-            const isHi = (i === curDir && (state === 'go' || state === 'recover'));
-            const nr = r - 36;
-            ctx.font = isHi ? 'bold 20px Orbitron' : '12px Orbitron';
-            ctx.fillStyle = isHi ? '#ff5722' : '#4a5568';
-            if (isHi) { ctx.shadowColor = '#ff5722'; ctx.shadowBlur = 12; }
-            ctx.fillText(String(i), cx + Math.cos(a)*nr, cx + Math.sin(a)*nr);
-            ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
-        }
-
-        // 指针
-        if (curDir && (state === 'go' || state === 'recover')) {
-            const a = dirAngle(curDir);
-            const len = (r - 55) * Math.min(ptrLen, 1);
-            const ex = cx + Math.cos(a)*len, ey = cx + Math.sin(a)*len;
-            ctx.beginPath(); ctx.moveTo(cx, cx); ctx.lineTo(ex, ey);
-            ctx.strokeStyle = '#ff5722'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-            ctx.shadowColor = '#ff5722'; ctx.shadowBlur = 10;
-            ctx.stroke();
-            ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.lineCap = 'butt';
-            ctx.beginPath(); ctx.arc(ex, ey, 5, 0, Math.PI*2);
-            ctx.fillStyle = '#ff5722'; ctx.shadowColor = '#ff5722'; ctx.shadowBlur = 14;
-            ctx.fill(); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
-        }
-
-        // 中心点
-        const cc = state === 'go' ? '#ff5722' : state === 'ready' ? '#00e676' : state === 'recover' ? '#29b6f6' : '#4a5568';
-        ctx.beginPath(); ctx.arc(cx, cx, 6, 0, Math.PI*2);
-        ctx.fillStyle = cc; ctx.fill();
-        ctx.beginPath(); ctx.arc(cx, cx, 10, 0, Math.PI*2);
-        ctx.strokeStyle = cc.replace(')', ',0.35)').replace('rgb', 'rgba');
-        ctx.lineWidth = 1.5; ctx.stroke();
-
-        if (state === 'go' || state === 'recover') ptrLen = Math.min(ptrLen + 0.1, 1);
-    }
-
-    /* ===== 动画循环 ===== */
-    let animRunning = false;
-    function startAnim() { if (!animRunning) { animRunning = true; animLoop(); } }
-    function stopAnim() { animRunning = false; if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
-    function animLoop() { if (!animRunning) return; drawClock(); rafId = requestAnimationFrame(animLoop); }
-
-    /* ===== 音频 ===== */
-    function getAC() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        return audioCtx;
-    }
-
-    function playBell() {
-        if (!soundOn) return;
-        const ac = getAC(), now = ac.currentTime;
-        [880, 1100, 880].forEach((freq, i) => {
-            const t = now + i * 0.13;
-            const osc = ac.createOscillator();
-            osc.type = 'square'; osc.frequency.value = freq;
-            const g = ac.createGain();
-            g.gain.setValueAtTime(0, t);
-            g.gain.linearRampToValueAtTime(0.13, t + 0.008);
-            g.gain.setValueAtTime(0.13, t + 0.065);
-            g.gain.linearRampToValueAtTime(0, t + 0.09);
-            osc.connect(g).connect(ac.destination);
-            osc.start(t); osc.stop(t + 0.1);
-        });
-    }
-
-    function testBell() {
-        getAC();
-        playBell();
-        if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
-    }
-
-    /* ===== 屏幕闪光 ===== */
-    function flashScreen() {
-        const el = document.getElementById('flashOverlay');
-        el.style.backgroundColor = 'rgba(255,87,34,0.1)';
-        el.style.opacity = '1';
-        setTimeout(() => { el.style.opacity = '0'; }, 120);
-    }
-
-    /* ===== 工具 ===== */
-    function rand(a, b) { return a + Math.random() * (b - a); }
-
-    /* ===== 状态机 ===== */
-    function enterReady() {
-        if (!isTraining || isPaused) return;
-        state = 'ready';
-        curDir = null; ptrLen = 0; pulseT = 0;
-
-        const d = document.getElementById('dirNum');
-        d.style.opacity = '0'; d.textContent = '--';
-        document.getElementById('dirLabel').textContent = '';
-        document.getElementById('statusText').textContent = '碎步准备...';
-        document.getElementById('statusText').style.color = 'var(--accent)';
-        document.getElementById('statusText').className = 'text-base mt-1 font-bold tracking-wide breathe';
-
-        startAnim();
-        phaseHandle = setTimeout(enterGo, rand(cfg.waitMin, cfg.waitMax) * 1000);
-    }
-
-    function enterGo() {
-        if (!isTraining || isPaused) return;
-        state = 'go';
-        curDir = Math.floor(Math.random() * 12) + 1;
-        rounds++; ptrLen = 0;
-
-        // 铃声 + 震动 + 闪光
-        playBell();
-        if (navigator.vibrate) navigator.vibrate([60, 30, 60]);
-        flashScreen();
-
-        // 语音播报（延迟一点，先让铃声响起）
-        setTimeout(() => speakDirection(curDir), 280);
-
-        // UI 更新
-        const d = document.getElementById('dirNum');
-        d.textContent = curDir;
-        d.style.color = 'var(--alert)';
-        d.style.opacity = '1';
-        d.classList.remove('num-pop');
-        void d.offsetWidth;
-        d.classList.add('num-pop');
-
-        document.getElementById('dirLabel').textContent = DIR_NAME[curDir];
-        document.getElementById('dirLabel').style.color = 'var(--alert)';
-        document.getElementById('statusText').textContent = '启动！';
-        document.getElementById('statusText').style.color = 'var(--alert)';
-        document.getElementById('statusText').className = 'text-base mt-1 font-bold tracking-wide';
-        document.getElementById('statRounds').textContent = rounds;
-        document.getElementById('statLast').textContent = curDir;
-
-        // 完成判定
-        if (cfg.totalRounds > 0 && rounds >= cfg.totalRounds) {
-            phaseHandle = setTimeout(() => {
-                stopTraining();
-                document.getElementById('statusText').textContent = '训练完成！';
-                document.getElementById('statusText').style.color = 'var(--accent)';
-            }, 1500);
-            return;
-        }
-
-        phaseHandle = setTimeout(enterRecover, 1500);
-    }
-
-    function enterRecover() {
-        if (!isTraining || isPaused) return;
-        state = 'recover';
-
-        document.getElementById('statusText').textContent = '回位...';
-        document.getElementById('statusText').style.color = 'var(--info)';
-        document.getElementById('statusText').className = 'text-base mt-1 font-bold tracking-wide breathe';
-        document.getElementById('dirLabel').style.color = 'var(--info)';
-
-        phaseHandle = setTimeout(enterReady, rand(cfg.recMin, cfg.recMax) * 1000);
-    }
-
-    /* ===== 训练控制 ===== */
-    function toggleTraining() {
-        if (!isTraining) startTraining();
-        else if (isPaused) resumeTraining();
-        else pauseTraining();
-    }
-
-    function startTraining() {
-        isTraining = true; isPaused = false;
-        rounds = 0; startTs = Date.now();
-
-        // 在用户手势中解锁音频和语音
-        getAC();
-        unlockSpeech();
-        startIosFix();
-        requestWakeLock();
-
-        document.getElementById('btnStart').innerHTML = '<i class="fas fa-pause mr-2"></i>暂停';
-        document.getElementById('statRounds').textContent = '0';
-        timerHandle = setInterval(updateTimer, 500);
-
-        enterReady();
-    }
-
-    function pauseTraining() {
-        isPaused = true;
-        clearTimeout(phaseHandle);
-        // 暂停时停止语音
-        if (hasSpeech()) speechSynthesis.cancel();
-
-        document.getElementById('btnStart').innerHTML = '<i class="fas fa-play mr-2"></i>继续';
-        document.getElementById('statusText').textContent = '已暂停';
-        document.getElementById('statusText').style.color = 'var(--muted)';
-        document.getElementById('statusText').className = 'text-base mt-1 font-bold tracking-wide';
-    }
-
-    function resumeTraining() {
-        isPaused = false;
-        // 恢复时重新解锁语音（iOS 休眠后可能需要）
-        unlockSpeech();
-
-        document.getElementById('btnStart').innerHTML = '<i class="fas fa-pause mr-2"></i>暂停';
-
-        if (state === 'ready') enterReady();
-        else if (state === 'go') {
-            document.getElementById('statusText').textContent = '启动！';
-            document.getElementById('statusText').style.color = 'var(--alert)';
-            phaseHandle = setTimeout(enterRecover, 1200);
-            startAnim();
-        } else if (state === 'recover') {
-            enterRecover();
-        }
-    }
-
-    function stopTraining() {
-        isTraining = false; isPaused = false;
-        state = 'idle'; curDir = null;
-        clearTimeout(phaseHandle);
-        clearInterval(timerHandle);
-        stopAnim();
-        stopIosFix();
-        releaseWakeLock();
-        if (hasSpeech()) speechSynthesis.cancel();
-
-        document.getElementById('btnStart').innerHTML = '<i class="fas fa-play mr-2"></i>开始训练';
-        ptrLen = 0; drawClock();
-    }
-
-    function resetTraining() {
-        stopTraining();
-        rounds = 0; startTs = null;
-        document.getElementById('statRounds').textContent = '0';
-        document.getElementById('statTime').textContent = '00:00';
-        document.getElementById('statLast').textContent = '--';
-        document.getElementById('dirNum').style.opacity = '0';
-        document.getElementById('dirNum').textContent = '--';
-        document.getElementById('dirLabel').textContent = '';
-        document.getElementById('statusText').textContent = '准备就绪';
-        document.getElementById('statusText').style.color = 'var(--muted)';
-        document.getElementById('statusText').className = 'text-base mt-1 font-bold tracking-wide';
-        drawClock();
-    }
-
-    /* ===== 计时 ===== */
-    function updateTimer() {
-        if (!startTs) return;
-        const s = Math.floor((Date.now() - startTs) / 1000);
-        document.getElementById('statTime').textContent =
-            String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
-    }
-
-    /* ===== 设置 ===== */
-    function syncSettings() {
-        const wm = parseFloat(document.getElementById('rngWaitMin').value);
-        const wx = parseFloat(document.getElementById('rngWaitMax').value);
-        const rm = parseFloat(document.getElementById('rngRecMin').value);
-        const rx = parseFloat(document.getElementById('rngRecMax').value);
-        const t = parseInt(document.getElementById('rngRounds').value);
-        cfg.waitMin = Math.min(wm, wx); cfg.waitMax = Math.max(wm, wx);
-        cfg.recMin = Math.min(rm, rx); cfg.recMax = Math.max(rm, rx);
-        cfg.totalRounds = t;
-        document.getElementById('lblWait').textContent = `${cfg.waitMin} ~ ${cfg.waitMax} 秒`;
-        document.getElementById('lblRecover').textContent = `${cfg.recMin} ~ ${cfg.recMax} 秒`;
-        document.getElementById('lblRounds').textContent = t === 0 ? '无限' : `${t} 轮`;
-    }
-
-    function toggleSettings() {
-        const p = document.getElementById('settingsPanel');
-        p.classList.toggle('open');
-        document.getElementById('setArrow').style.transform = p.classList.contains('open') ? 'rotate(180deg)' : '';
-    }
-
-    function toggleSound() {
-        soundOn = !soundOn;
-        document.getElementById('btnSound').style.background = soundOn ? 'var(--accent)' : 'var(--border)';
-        document.getElementById('knobSound').style.left = soundOn ? 'calc(100% - 22px)' : '2px';
-    }
-
-    function toggleSpeech() {
-        speechOn = !speechOn;
-        document.getElementById('btnSpeech').style.background = speechOn ? 'var(--accent)' : 'var(--border)';
-        document.getElementById('knobSpeech').style.left = speechOn ? 'calc(100% - 22px)' : '2px';
-        if (!speechOn && hasSpeech()) speechSynthesis.cancel();
-    }
-
-    /* ===== Wake Lock ===== */
-    async function requestWakeLock() {
-        try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
-    }
-    async function releaseWakeLock() {
-        if (wakeLock) { await wakeLock.release(); wakeLock = null; }
-    }
-
-    /* ===== 键盘 ===== */
-    document.addEventListener('keydown', e => {
-        if (e.code === 'Space') { e.preventDefault(); toggleTraining(); }
-        else if (e.code === 'KeyR') { e.preventDefault(); resetTraining(); }
-    });
-
-    /* ===== 初始化 ===== */
-    drawClock();
-    updateSpeechStatus();
-    </script>
 </body>
 </html>
